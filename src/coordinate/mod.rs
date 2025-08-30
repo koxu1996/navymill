@@ -1,3 +1,6 @@
+mod alphanum10;
+mod format;
+
 /// Represents a coordinate on a battleship board.
 ///
 /// The `x` field indicates the column, and the `y` field indicates the row.
