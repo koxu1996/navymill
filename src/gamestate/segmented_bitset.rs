@@ -49,7 +49,7 @@ impl SegmentedBitSetGameState {
 impl GameState for SegmentedBitSetGameState {
   fn shoot(&self, coordinate: &Coordinate) -> ShotResult {
     // If the coordinate points to a ship, then it would have mapping to the segment and bit index.
-    let (segment_idx, bit_idx) = match self.ship_positions.get(&coordinate) {
+    let (segment_idx, bit_idx) = match self.ship_positions.get(coordinate) {
       Some(v) => v,
       None => return ShotResult::Miss,
     };
