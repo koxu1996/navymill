@@ -1,37 +1,13 @@
 use navymill::coordinate::Coordinate;
 use navymill::coordinate::alphanum10::AlphaNum10;
 use navymill::coordinate::format::CoordinateFormat;
-use navymill::gamestate::segmented_bitset::SegmentedBitSetGameState;
 use navymill::gamestate::ShotResult;
+use navymill::gamestate::segmented_bitset::SegmentedBitSetGameState;
+use navymill::layout::ShipLayoutProvider;
+use navymill::layout::file::FileLayout;
 use navymill::session::{FinishEvent, GameSession, SessionShootError};
 
-use std::fs::File;
-use std::io::{self, BufRead, BufReader, Write};
-
-fn read_ship_positions(path: &str) -> io::Result<Vec<Coordinate<u8>>> {
-  let file = File::open(path)?;
-  let reader = BufReader::new(file);
-
-  let mut coords = Vec::new();
-
-  for line in reader.lines() {
-    let line = line?;
-    for token in line.trim().split(',') {
-      if token.trim().is_empty() {
-        continue;
-      }
-      let coord = AlphaNum10::parse(token.trim()).map_err(|e| {
-        io::Error::new(
-          io::ErrorKind::InvalidData,
-          format!("Invalid coord {token}: {e}"),
-        )
-      })?;
-      coords.push(coord);
-    }
-  }
-
-  Ok(coords)
-}
+use std::io::{self, Write};
 
 fn main() -> io::Result<()> {
   let args: Vec<String> = std::env::args().collect();
@@ -40,7 +16,11 @@ fn main() -> io::Result<()> {
     std::process::exit(1);
   }
 
-  let ship_coords = read_ship_positions(&args[1])?;
+  // Build the layout from file and get positions for this (single) player.
+  let layout = FileLayout::new(&args[1])?;
+  let ship_coords: Vec<Coordinate<u8>> = layout.positions_for("local");
+
+  // Create game state & session
   let state: SegmentedBitSetGameState = SegmentedBitSetGameState::new(ship_coords);
   let session = GameSession::new(state);
 
