@@ -98,6 +98,7 @@ name = "navymill"
 version = "0.1.0"
 dependencies = [
  "crossbeam-skiplist",
+ "crossbeam-utils",
  "dashmap",
  "rand",
 ]

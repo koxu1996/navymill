@@ -9,6 +9,9 @@ path = "./src/bin/main.rs"
 
 [dependencies]
 
+# Crossbeam utils.
+crossbeam-utils = { version = "0.8.21", default-features = false, features = [] }
+
 # Map structure - fast and concurrent.
 dashmap = { version = "6.1.0", default-features = false, features = [] }
 
