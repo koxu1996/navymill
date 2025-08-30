@@ -37,6 +37,9 @@ fn main() -> io::Result<()> {
     stdin.read_line(&mut buffer)?;
 
     let trimmed = buffer.trim();
+    if trimmed.is_empty() {
+      continue;
+    }
 
     match AlphaNum10::parse(trimmed) {
       Ok(coord) => match session.shoot(&coord) {
