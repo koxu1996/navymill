@@ -7,6 +7,10 @@ edition = "2024"
 name = "navymill-play"
 path = "./src/bin/main.rs"
 
+[[bin]]
+name = "navymill-simulate"
+path = "./src/bin/simulate.rs"
+
 [dependencies]
 
 # Crossbeam utils.
