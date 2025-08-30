@@ -52,12 +52,13 @@ impl AlphaNum10 {
 }
 
 impl CoordinateFormat for AlphaNum10 {
+  type CoordType = u8;
   type Err = AlphaNumParseError;
   /// Parse a coordinate string like "A1", "B2", "J10".
   ///
   /// Rows are represented by letters A–J (mapped to 0–9),
   /// and columns are represented by numbers 1–10 (mapped to 0–9).
-  fn parse(s: &str) -> Result<Coordinate, AlphaNumParseError> {
+  fn parse(s: &str) -> Result<Coordinate<Self::CoordType>, AlphaNumParseError> {
     let mut chars = s.chars();
 
     // Parse row (single letter A-J).
@@ -73,10 +74,15 @@ impl CoordinateFormat for AlphaNum10 {
 
   /// Format a coordinate back to string like "A1", "B2", "J10".
   /// NOTE: This assumes the coordinate is valid for a 10x10 board.
-  fn format(coord: Coordinate) -> String {
+  fn format(coord: Coordinate<Self::CoordType>) -> String {
     let row_char = (b'A' + coord.y) as char;
     let col = coord.x + 1;
     format!("{row_char}{col}")
+  }
+
+  /// This particular board is a 10x10 grid.
+  fn max_coord() -> Coordinate<Self::CoordType> {
+    Coordinate { x: 9, y: 9 }
   }
 }
 
