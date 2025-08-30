@@ -63,7 +63,6 @@ fn main() -> io::Result<()> {
           ShotResult::Hit => println!("💥 Hit!"),
           ShotResult::AlreadyHit => println!("⚠️ Already hit!"),
           ShotResult::Miss => println!("💨 Miss!"),
-          ShotResult::InvalidPosition => println!("❌ Invalid position!"), // just in case
         }
       }
       Err(e) => {

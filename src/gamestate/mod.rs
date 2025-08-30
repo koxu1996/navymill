@@ -7,7 +7,7 @@ pub enum ShotResult {
   Hit,
   AlreadyHit,
   Miss,
-  InvalidPosition,
+  //InvalidPosition, // NOTE: Parsing coordinates already ensures validity.
 }
 
 /// Trait representing the state of a battleship game.
