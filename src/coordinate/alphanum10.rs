@@ -79,11 +79,6 @@ impl CoordinateFormat for AlphaNum10 {
     let col = coord.x + 1;
     format!("{row_char}{col}")
   }
-
-  /// This particular board is a 10x10 grid.
-  fn max_coord() -> Coordinate<Self::CoordType> {
-    Coordinate { x: 9, y: 9 }
-  }
 }
 
 #[cfg(test)]
