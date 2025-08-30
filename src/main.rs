@@ -2,7 +2,8 @@ use navymill::coordinate::Coordinate;
 use navymill::coordinate::alphanum10::AlphaNum10;
 use navymill::coordinate::format::CoordinateFormat;
 use navymill::gamestate::segmented_bitset::SegmentedBitSetGameState;
-use navymill::gamestate::{GameState, ShotResult};
+use navymill::gamestate::ShotResult;
+use navymill::session::{FinishEvent, GameSession, SessionShootError};
 
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
@@ -40,7 +41,8 @@ fn main() -> io::Result<()> {
   }
 
   let ship_coords = read_ship_positions(&args[1])?;
-  let game = SegmentedBitSetGameState::new(ship_coords);
+  let state: SegmentedBitSetGameState = SegmentedBitSetGameState::new(ship_coords);
+  let session = GameSession::new(state);
 
   println!("Game started! Enter coordinates like A1, B2, ..., J10 to shoot.");
 
@@ -57,23 +59,32 @@ fn main() -> io::Result<()> {
     let trimmed = buffer.trim();
 
     match AlphaNum10::parse(trimmed) {
-      Ok(coord) => {
-        let result = game.shoot(&coord);
-        match result {
-          ShotResult::Hit => println!("💥 Hit!"),
-          ShotResult::AlreadyHit => println!("⚠️ Already hit!"),
-          ShotResult::Miss => println!("💨 Miss!"),
+      Ok(coord) => match session.shoot(&coord) {
+        Ok(result) => {
+          match result {
+            ShotResult::Hit => println!("💥 Hit!"),
+            ShotResult::AlreadyHit => println!("⚠️ Already hit!"),
+            ShotResult::Miss => println!("💨 Miss!"),
+          }
+
+          match session.maybe_finish() {
+            FinishEvent::Finished { shots, duration } => {
+              println!("🎉 All ships sunk in {shots} shots!");
+              println!("⏱️ Duration: {:.2?}", duration);
+              break;
+            }
+            FinishEvent::None => {}
+          }
         }
-      }
+        Err(SessionShootError::Finished) => {
+          println!("⚠️ Game already finished, no more shots allowed.");
+          break;
+        }
+      },
       Err(e) => {
         println!("❌ Invalid coordinate input: {e}");
         continue;
       }
-    }
-
-    if game.has_won() {
-      println!("🎉 All ships sunk! You win!");
-      break;
     }
   }
 
