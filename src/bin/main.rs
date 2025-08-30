@@ -1,80 +1,109 @@
-use navymill::coordinate::Coordinate;
+use std::io::{self, Write};
+use std::sync::Arc;
+
 use navymill::coordinate::alphanum10::AlphaNum10;
 use navymill::coordinate::format::CoordinateFormat;
 use navymill::gamestate::ShotResult;
-use navymill::gamestate::segmented_bitset::SegmentedBitSetGameState;
 use navymill::layout::ShipLayoutProvider;
 use navymill::layout::file::FileLayout;
 use navymill::layout::random::RandomLayout;
-use navymill::session::{FinishEvent, GameSession, SessionShootError};
-
-use std::io::{self, Write};
+use navymill::manager::GameManager;
+use navymill::session::SessionShootError;
 
 fn main() -> io::Result<()> {
   let args: Vec<String> = std::env::args().collect();
 
-  // Choose layout: FileLayout if a path is given, otherwise RandomLayout.
-  let ship_coords: Vec<Coordinate<u8>> = if args.len() == 2 {
-    // File-based layout
-    let layout = FileLayout::new(&args[1])?;
-    layout.positions_for("local")
+  // Pick layout: file if path provided, else random.
+  let layout: Arc<dyn ShipLayoutProvider> = if args.len() == 2 {
+    Arc::new(FileLayout::new(&args[1])?)
   } else {
-    // Random layout (10x10 board, classic fleet 5-4-3-3-2, no-touch, nondeterministic seed)
-    let layout = RandomLayout {
-      board_size: 10,
-      ships: vec![5, 4, 3, 3, 2],
+    Arc::new(RandomLayout {
+      board_size: 2,
+      ships: vec![1],
       no_touch: true,
-      seed: None, // set Some(1234) for deterministic per-player placements
-    };
-    layout.positions_for("local")
+      seed: None, // set Some(1234) for deterministic per-player boards
+    })
   };
 
-  // Create game state & session
-  let state: SegmentedBitSetGameState = SegmentedBitSetGameState::new(ship_coords);
-  let session = GameSession::new(state);
+  let mgr = GameManager::new(layout);
 
-  println!("Game started! Enter coordinates like A1, B2, ..., J10 to shoot.");
+  println!("Game started!");
+  println!("• Single-player: type coordinates like `A1` (player defaults to `local`).");
+  println!("• Multi-player:   type `PlayerName A1`.");
+  println!("• Leaderboard:    `:top 10`");
+  println!("• Quit:           `:q`");
 
   let stdin = io::stdin();
   let mut stdout = io::stdout();
   let mut buffer = String::new();
 
   loop {
-    print!("Your move: ");
+    print!("> ");
     stdout.flush()?;
     buffer.clear();
-    stdin.read_line(&mut buffer)?;
-
-    let trimmed = buffer.trim();
-    if trimmed.is_empty() {
+    if stdin.read_line(&mut buffer)? == 0 {
+      break;
+    }
+    let line = buffer.trim();
+    if line.is_empty() {
       continue;
     }
 
-    match AlphaNum10::parse(trimmed) {
-      Ok(coord) => match session.shoot(&coord) {
+    // Commands
+    if line == ":q" || line == ":quit" || line == ":exit" {
+      break;
+    }
+    if let Some(rest) = line.strip_prefix(":top") {
+      let n = rest.trim().parse::<usize>().unwrap_or(10);
+      let entries = mgr.top(n);
+      if entries.is_empty() {
+        println!("(leaderboard empty)");
+      } else {
+        for (i, (player, shots, dur)) in entries.into_iter().enumerate() {
+          println!(
+            "{:>2}. {:<16} shots: {:<3} time: {:?}",
+            i + 1,
+            player,
+            shots,
+            dur
+          );
+        }
+      }
+      continue;
+    }
+
+    // Parse input as either "Player Coord" or just "Coord" (defaults to player "local")
+    let mut parts = line.split_whitespace();
+    let first = parts.next().unwrap();
+    let (player, coord_str) = if let Some(second) = parts.next() {
+      (first, second) // "Player Coord"
+    } else {
+      ("local", first) // single token -> default player
+    };
+
+    match AlphaNum10::parse(coord_str) {
+      Ok(coord) => match mgr.shoot(player, coord) {
         Ok(result) => {
           match result {
-            ShotResult::Hit => println!("💥 Hit!"),
-            ShotResult::AlreadyHit => println!("⚠️ Already hit!"),
-            ShotResult::Miss => println!("💨 Miss!"),
+            ShotResult::Hit => println!("{}: 💥 Hit!", player),
+            ShotResult::AlreadyHit => println!("{}: ⚠️ Already hit!", player),
+            ShotResult::Miss => println!("{}: 💨 Miss!", player),
           }
 
-          match session.maybe_finish() {
-            FinishEvent::Finished { shots, duration } => {
-              println!("🎉 All ships sunk in {shots} shots!");
-              println!("⏱️ Duration: {:.2?}", duration);
-              break;
-            }
-            FinishEvent::None => {}
+          // If this shot finished the game, manager has tombstoned it—report summary.
+          if let Some(summary) = mgr.finished_summary(player) {
+            println!(
+              "🎉 {} finished in {} shots (⏱️ {:?})",
+              summary.player, summary.shots, summary.duration
+            );
           }
         }
         Err(SessionShootError::Finished) => {
-          println!("⚠️ Game already finished, no more shots allowed.");
-          break;
+          println!("✅ {} has already finished. No more shots allowed.", player);
         }
       },
       Err(e) => {
-        println!("❌ Invalid coordinate input: {e}");
+        println!("❌ Invalid coordinate input `{}`: {}", coord_str, e);
         continue;
       }
     }
