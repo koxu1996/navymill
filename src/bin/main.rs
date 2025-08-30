@@ -5,20 +5,29 @@ use navymill::gamestate::ShotResult;
 use navymill::gamestate::segmented_bitset::SegmentedBitSetGameState;
 use navymill::layout::ShipLayoutProvider;
 use navymill::layout::file::FileLayout;
+use navymill::layout::random::RandomLayout;
 use navymill::session::{FinishEvent, GameSession, SessionShootError};
 
 use std::io::{self, Write};
 
 fn main() -> io::Result<()> {
   let args: Vec<String> = std::env::args().collect();
-  if args.len() != 2 {
-    eprintln!("Usage: {} <path_to_ships_file>", args[0]);
-    std::process::exit(1);
-  }
 
-  // Build the layout from file and get positions for this (single) player.
-  let layout = FileLayout::new(&args[1])?;
-  let ship_coords: Vec<Coordinate<u8>> = layout.positions_for("local");
+  // Choose layout: FileLayout if a path is given, otherwise RandomLayout.
+  let ship_coords: Vec<Coordinate<u8>> = if args.len() == 2 {
+    // File-based layout
+    let layout = FileLayout::new(&args[1])?;
+    layout.positions_for("local")
+  } else {
+    // Random layout (10x10 board, classic fleet 5-4-3-3-2, no-touch, nondeterministic seed)
+    let layout = RandomLayout {
+      board_size: 10,
+      ships: vec![5, 4, 3, 3, 2],
+      no_touch: true,
+      seed: None, // set Some(1234) for deterministic per-player placements
+    };
+    layout.positions_for("local")
+  };
 
   // Create game state & session
   let state: SegmentedBitSetGameState = SegmentedBitSetGameState::new(ship_coords);
