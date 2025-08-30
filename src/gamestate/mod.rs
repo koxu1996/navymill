@@ -1,6 +1,6 @@
 use crate::coordinate::Coordinate;
 
-mod segmented_bitset;
+pub mod segmented_bitset;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShotResult {

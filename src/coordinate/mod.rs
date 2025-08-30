@@ -1,5 +1,5 @@
-mod alphanum10;
-mod format;
+pub mod alphanum10;
+pub mod format;
 
 /// Represents a coordinate on a battleship board.
 ///
